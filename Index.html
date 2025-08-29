@@ -1,0 +1,86 @@
+<!-- salvar como index.html e abrir no browser -->
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Notícias Angola — Home</title>
+  <style>
+    /* CSS minimal, mobile-first */
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f6f7fb;color:#111}
+    header{background:#002b5c;color:white;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+    header .brand{font-weight:700}
+    nav{display:flex;gap:12px}
+    .container{max-width:960px;margin:18px auto;padding:0 12px}
+    .headline{background:white;padding:12px;border-radius:8px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .headline h3{margin:0 0 6px 0}
+    .meta{font-size:12px;color:#666;margin-bottom:8px}
+    .spinner{text-align:center;padding:20px;color:#666}
+    @media(min-width:800px){ .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px} }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">Notícias Angola</div>
+    <nav>
+      <a href="#politica" style="color:white;text-decoration:none">Política</a>
+      <a href="#economia" style="color:white;text-decoration:none">Economia</a>
+      <a href="#sociedade" style="color:white;text-decoration:none">Sociedade</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section id="latest" class="grid">
+      <div id="feed-list">
+        <div class="spinner" id="loading">A carregar notícias...</div>
+      </div>
+      <aside id="sidebar">
+        <div class="headline"><strong>Fonte principal</strong><div style="margin-top:8px">ANGOP, Jornal de Angola, Expansão</div></div>
+        <div class="headline"><strong>Procurar</strong><input id="q" placeholder="Pesquisar" style="width:100%;padding:6px;margin-top:8px" /></div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    // lista de feeds (substitui por feeds reais / endpoint próprio em produção)
+    const feeds = [
+      // Coloca aqui os RSS URLs que vais usar
+      'https://allafrica.com/feeds/news/angola/all/main.rss' // exemplo de agregador (substituir conforme necessário)
+    ];
+
+    async function fetchFeed(rssUrl) {
+      // Exemplo com rss2json público (apenas para testar). Em produção usa teu serverless!
+      const url = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(rssUrl);
+      const resp = await fetch(url);
+      if(!resp.ok) throw new Error('Erro a buscar feed');
+      return resp.json();
+    }
+
+    async function loadAll() {
+      const container = document.getElementById('feed-list');
+      container.innerHTML = '<div class="spinner">A carregar notícias...</div>';
+      try {
+        const results = await Promise.all(feeds.map(f => fetchFeed(f)));
+        // combinar items e ordenar por data
+        let items = results.flatMap(r => r.items || []);
+        items.sort((a,b)=> new Date(b.pubDate) - new Date(a.pubDate));
+        container.innerHTML = '';
+        items.slice(0,30).forEach(item=>{
+          const el = document.createElement('article');
+          el.className = 'headline';
+          el.innerHTML = `
+            <h3><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></h3>
+            <div class="meta">${new Date(item.pubDate).toLocaleString()} · ${item.author || ''}</div>
+            <p>${(item.description||'').replace(/<[^>]+>/g,'').slice(0,180)}...</p>
+          `;
+          container.appendChild(el);
+        });
+      } catch(err) {
+        container.innerHTML = '<div class="spinner">Erro ao carregar. ' + err.message + '</div>';
+      }
+    }
+
+    loadAll();
+  </script>
+</body>
+</html>
